@@ -1,4 +1,4 @@
-from keras.applications.inception_v3 import InceptionV3
+from keras.applications.vgg19 import VGG19
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D
 import numpy as np
@@ -104,7 +104,7 @@ print(np.mean(cellularity[testind])) #test mean:0.35, median:0.25
 ###########
 
 # Create the base pre-trained model
-base_model = InceptionV3(weights='imagenet', include_top=False)
+base_model = VGG19(weights='imagenet', include_top=False)
 
 # Add a global spatial average pooling layer
 x = base_model.output
@@ -150,7 +150,7 @@ datagen =  ImageDataGenerator(
 val_datagen = ImageDataGenerator(rescale=1./255)
 
 # checkpoint
-filepath="F:\\Studie\\OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\inceptionv3_layer41_patient.hdf5"
+filepath="F:\\Studie\\OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\VGG19.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
