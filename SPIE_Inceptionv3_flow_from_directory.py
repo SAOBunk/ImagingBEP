@@ -29,84 +29,26 @@ os.chdir(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP")
 ### Import the main dataset
 ############
 
-#Images
-images=[]
-image_slide=[]
-image_region=[]
-for img in sorted(glob.glob(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\train\\*.tif")):
-    image_slide.append(img[(68+len(pathPrefix)):(73+len(pathPrefix))])
-    image_region.append(re.sub("\D", "", img[-6:-4]))
-    images.append(np.array(Image.open(img))[:,:,0:3])
 
 #Annotations
 anno = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\train_labels.csv")
-cellularity=[]
+trainCellularity=[]
 for i in range(len(images)):
-    cellularity.append(float(anno.loc[operator.and_(anno['slide']==int(image_slide[i]), anno['rid']==int(image_region[i]))]['y']))
- 
-patient_id = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\patient_ids.csv")
+    trainCellularity.append(float(anno.loc[operator.and_(anno['slide']==int(image_slide[i]), anno['rid']==int(image_region[i]))]['y']))
 
-#Create train/val/test set based on patient id
-unique = list(set(patient_id['patient_id'])) #63 unique WSIs here --> 45 train / 8 val / 10 test
-np.random.seed(seed=12)
-train_id, validation_id, test_id = np.split(np.random.choice(unique, size=len(unique), replace=False), [int(.7*len(unique)), int(.85*len(unique))])  
-
-#Patient_id to WSIs
-train=[]
-for i in range(len(train_id)):
-    for j in range(len(patient_id['slide'][patient_id['patient_id']==train_id[i]])):
-        loc = np.where(patient_id['patient_id']==train_id[i])[0][j]
-        train.append(patient_id.iloc[loc,1])
-validation=[]
-for i in range(len(validation_id)):
-    for j in range(len(patient_id['slide'][patient_id['patient_id']==validation_id[i]])):
-        loc = np.where(patient_id['patient_id']==validation_id[i])[0][j]
-        validation.append(patient_id.iloc[loc,1])
-test=[]
-for i in range(len(test_id)):
-    for j in range(len(patient_id['slide'][patient_id['patient_id']==test_id[i]])):
-        loc = np.where(patient_id['patient_id']==test_id[i])[0][j]
-        test.append(patient_id.iloc[loc,1])
-
-image_slide = np.array(image_slide).astype('int')
-
-trainind=[]
-valind=[]
-testind=[]
-for i in range(len(image_slide)):
-    if (image_slide[i] in test):
-        testind.append(i)
-    elif (image_slide[i] in validation):
-        valind.append(i)
-    else:
-        trainind.append(i)
-        
-#Write to patch_numbers for mitko
-#trainset = []
-#for i in range(len(trainind)):
-#    trainset.append(np.array(image_slide)[trainind[i]]+"_"+np.array(image_region)[trainind[i]])
-#validationset = []
-#for i in range(len(valind)):
-#    validationset.append(np.array(image_slide)[valind[i]]+"_"+np.array(image_region)[valind[i]])
-#testset = []
-#for i in range(len(testind)):
-#    testset.append(np.array(image_slide)[testind[i]]+"_"+np.array(image_region)[testind[i]])
-#trainset = pd.DataFrame({"train": trainset})    
-#validationset = pd.DataFrame({"val": validationset})
-#testset = pd.DataFrame({"test": testset})   
-#SPIE_div = pd.concat([trainset,validationset,testset], ignore_index=True,axis=1)
-#SPIE_div.columns = ["train","val","test"]
-##save to csv without index
-#SPIE_div.to_csv("SPIE_traintestsplit_patient.csv", index=False)
+anno = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\val_labels.csv")
+valCellularity=[]
+for i in range(len(images)):
+    valCellularity.append(float(anno.loc[operator.and_(anno['slide']==int(image_slide[i]), anno['rid']==int(image_region[i]))]['y'])) 
         
 #Make everything in array type
-images = np.array(images)
-cellularity = np.array(cellularity)
+trainCellularity = np.array(trainCellularity)
+valCellularity = np.array(valCellularity)
 
 #Check the division of the cellularity score over train/ind/test
-print(np.mean(cellularity[trainind])) #train mean:0.30, median:0.20
-print(np.mean(cellularity[valind])) #validation mean:0.37, median:0.30
-print(np.mean(cellularity[testind])) #test mean:0.35, median:0.25
+print(np.mean(trainCellularity)) #train mean:0.30, median:0.20
+print(np.mean(valCellularity)) #validation mean:0.37, median:0.30
+
 
 print("Loaded the dataset.")
 
@@ -146,8 +88,6 @@ model = Model(inputs=base_model.input, outputs=predictions)
 adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
 
-print("Compiled model.")
-
 # Build a data augmentor
 datagen =  ImageDataGenerator(
         rotation_range=np.pi,
@@ -162,19 +102,15 @@ datagen =  ImageDataGenerator(
         channel_shift_range=15) 
 val_datagen = ImageDataGenerator(rescale=1./255)
 
-print("Initialized ImageDataGenerators")
+train_gen = datagen.flow_from_directory(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\train", 
+                                        np.reshape(trainCellularity, (-1,1)), #DIT KAN NIET! Je kan niet je eigen labels toevoegen bij flow_from_directory
+                                        batch_size=10, 
+                                        shuffle=True)
 
-train_gen = datagen.flow(images[trainind], 
-                         np.reshape(cellularity[trainind], (-1,1)), 
-                         batch_size=10, 
-                         shuffle=True)
-
-val_gen = val_datagen.flow(images[valind], 
-                           np.reshape(cellularity[valind], (-1,1)), 
-                           batch_size=10, 
-                           shuffle=False)
-
-print("Intialized data generators.")
+val_gen = val_datagen.flow_from_directory(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\validation", 
+                                          np.reshape(cellularity[valind], (-1,1)), 
+                                          batch_size=10, 
+                                          shuffle=False)
 
 # checkpoint
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\inceptionv3_layer41_patient.hdf5"
@@ -182,11 +118,12 @@ checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
    
+datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True)
+
 print("Starting initial training.")
 # train the model on the new data for a few epochs
-model.fit_generator(train_gen, steps_per_epoch=100, epochs=100, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
+model.fit_generator(, steps_per_epoch=100, epochs=100, validation_data=, validation_steps=22, callbacks=callbacks_list)
 
-print("Completeted initial training.")
 #Load the best weights in the model
 model.load_weights(filepath)
 
