@@ -126,7 +126,7 @@ x = Dense(1024, activation='relu')(x)
 predictions = Dense(1, activation='sigmoid')(x)
 
 # First: train only the top layers (which were randomly initialized)
-#
+# i.e. freeze all convolutional InceptionV3 layers
 for layer in base_model.layers:
     layer.trainable = False
 
@@ -164,32 +164,35 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-train_gen = datagen.flow(images[trainind], 
-                         np.reshape(cellularity[trainind], (-1,1)), 
-                         batch_size=10, 
-                         shuffle=True)
-
-val_gen = val_datagen.flow(images[valind], 
-                           np.reshape(cellularity[valind], (-1,1)), 
-                           batch_size=10, 
-                           shuffle=False)
-
-print("Intialized data generators.")
 
 # checkpoint
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\VGG19.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
-   
-print("Starting initial training.")
-# train the model on the new data for a few epochs
-model.fit_generator(train_gen, steps_per_epoch=100, epochs=100, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
 
-print("Completeted initial training.")
+if(1):   
+    train_gen = datagen.flow(images[trainind], 
+                             np.reshape(cellularity[trainind], (-1,1)), 
+                             batch_size=10, 
+                             shuffle=True)
+    
+    val_gen = val_datagen.flow(images[valind], 
+                               np.reshape(cellularity[valind], (-1,1)), 
+                               batch_size=10, 
+                               shuffle=False)
+    
+    print("Initialized first data generators.")
+
+    
+    print("Starting initial training.")
+    # train the model on the new data for a few epochs
+    model.fit_generator(train_gen, steps_per_epoch=100, epochs=100, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
+    print("Completeted initial training.")
+
 #Load the best weights in the model
 model.load_weights(filepath)
-
+print("Loaded best weights.")
 # at this point, the top layers are well trained and we can start fine-tuning
 # convolutional layers from inception V3. We will freeze the bottom N layers
 # and train the remaining top layers.
@@ -199,31 +202,36 @@ model.load_weights(filepath)
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-# I chose to train a lot of the inception blocks, i.e. we will freeze
-# the first 41 layers and unfreeze the rest:
-for layer in model.layers[:41]:
-   layer.trainable = False
-for layer in model.layers[41:]:
-   layer.trainable = True
-
-# we need to recompile the model for these modifications to take effect
-# we use adam with a low learning rate
-adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
-model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
-
-# we train our model again (this time fine-tuning the top 2 inception blocks
-# alongside the top Dense layers
-model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
-
-#Load the best weights in the model
-model.load_weights(filepath)
-
+if(0):
+    # I chose to train a lot of the inception blocks, i.e. we will freeze
+    # the first 41 layers and unfreeze the rest:
+    for layer in model.layers[:41]:
+       layer.trainable = False
+    for layer in model.layers[41:]:
+       layer.trainable = True
+    
+    # we need to recompile the model for these modifications to take effect
+    # we use adam with a low learning rate
+    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
+    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
+    print("Recompiled model for second training")
+    
+    # we train our model again (this time fine-tuning the top 2 inception blocks
+    # alongside the top Dense layers
+    print("Starting second training.")
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    print("Completed second training.")
+    #Load the best weights in the model
+    model.load_weights(filepath)
+    print("Loaded new best weights.")
 ###########
 ### Predict with trained model
 ###########
-
+print("Predict with trained model.")
 # Apply model and see how well it does on the validation set
 pred = model.predict(images/255)
+print("Finished predictions.")
+
 def round_nearest(x, a):
     return np.round(x / a) * a
 round_pred = round_nearest(pred,0.05)
@@ -231,11 +239,11 @@ round_pred = round_nearest(pred,0.05)
 ###Write code here to evaluate the classifier
 #The predprob function comes directly from the challenge organizers
 pred_prob = predprob(cellularity, pred)
-tau_b, p_value = stats.kendalltau(pred, cellularity[valind])
+tau_b, p_value = stats.kendalltau(pred[valind], cellularity[valind])
 np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 
 #Plot
-plt.scatter(cellularity[valind], pred)
+plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
 
