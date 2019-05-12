@@ -166,12 +166,12 @@ print("Initialized ImageDataGenerators")
 
 
 # checkpoint
-filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\inceptionv3_layer41_patient.hdf5"
+filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Inceptionv3.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
 
-if(0):   
+if(1):   
     train_gen = datagen.flow(images[trainind], 
                              np.reshape(cellularity[trainind], (-1,1)), 
                              batch_size=10, 
@@ -229,11 +229,14 @@ if(0):
 ###########
 print("Predict with trained model.")
 # Apply model and see how well it does on the validation set
-#predict_datagen = ImageDataGenerator(rescale=1./255).flow(images, np.reshape(cellularity, (-1,1)), batch_size=10, shuffle=False)
-#predict_steps = predict_datagen.n//predict_datagen.batch_size
-#pred = model.predict_generator(predict_datagen, steps=predict_steps, verbose=1)
-pred = model.predict(images/255)
+predict_datagen = ImageDataGenerator(rescale=1./255).flow(images, np.reshape(cellularity, (-1,1)), batch_size=10, shuffle=False)
+predict_steps = predict_datagen.n//predict_datagen.batch_size
+pred = model.predict_generator(predict_datagen, steps=predict_steps+1, verbose=1)
+#pred = model.predict(images/255)
 print("Finished predictions.")
+
+np.savetxt("datasets//predictions//Inceptionv3_predictions.csv", pred, fmt='%1.18f', delimiter=',')
+
 
 def round_nearest(x, a):
     return np.round(x / a) * a
@@ -242,6 +245,7 @@ round_pred = round_nearest(pred,0.05)
 ###Write code here to evaluate the classifier
 #The predprob function comes directly from the challenge organizers
 pred_prob = predprob(cellularity, pred)
+print("Prediction probability score: "+str(pred_prob))
 tau_b, p_value = stats.kendalltau(pred[valind], cellularity[valind])
 np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 
@@ -249,6 +253,8 @@ np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
+plt.savefig("datasets//predictions//Inceptionv3_val_graph.png", dpi=150)
+plt.show()
 
 #Make nice results table
 plain = pd.DataFrame()
@@ -257,12 +263,12 @@ plain['image'] = image_region
 plain['prediction_plain'] = pred
 plain['truth'] = cellularity
 
-#Add nuclei results to my table
-nuclei = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\nuclei_results.csv", sep='\s*,\s*')
-nuclei['slide'] = nuclei['slide'].astype(np.int64)
-nuclei['image'] = nuclei['image'].astype(str)
-merge =pd.merge(plain, nuclei[['slide','image','prediction']], on=['slide','image'])
-
-pred_avg = np.mean((np.array(merge['prediction_plain']),np.array(merge['prediction'])), axis=0)
-round_pred_avg = round_nearest(pred_avg,0.05)
-tau_b_avg, p_value = stats.kendalltau(round_pred_avg[valind], cellularity[valind])
+##Add nuclei results to my table
+#nuclei = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\nuclei_results.csv", sep='\s*,\s*')
+#nuclei['slide'] = nuclei['slide'].astype(np.int64)
+#nuclei['image'] = nuclei['image'].astype(str)
+#merge =pd.merge(plain, nuclei[['slide','image','prediction']], on=['slide','image'])
+#
+#pred_avg = np.mean((np.array(merge['prediction_plain']),np.array(merge['prediction'])), axis=0)
+#round_pred_avg = round_nearest(pred_avg,0.05)
+#tau_b_avg, p_value = stats.kendalltau(round_pred_avg[valind], cellularity[valind])

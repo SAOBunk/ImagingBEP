@@ -15,7 +15,7 @@ from keras.callbacks import TensorBoard
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-if(0):
+if(1):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -202,12 +202,12 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-if(1):
+if(0):
     # I chose to train a lot of the inception blocks, i.e. we will freeze
     # the first 41 layers and unfreeze the rest:
-    for layer in model.layers[:41]:
+    for layer in model.layers[:99]:
        layer.trainable = False
-    for layer in model.layers[41:]:
+    for layer in model.layers[99:]:
        layer.trainable = True
     
     # we need to recompile the model for these modifications to take effect
@@ -229,8 +229,13 @@ if(1):
 ###########
 print("Predict with trained model.")
 # Apply model and see how well it does on the validation set
-pred = model.predict(images/255)
+predict_datagen = ImageDataGenerator(rescale=1./255).flow(images, np.reshape(cellularity, (-1,1)), batch_size=10, shuffle=False)
+predict_steps = predict_datagen.n//predict_datagen.batch_size
+pred = model.predict_generator(predict_datagen, steps=predict_steps+1, verbose=1)
+#pred = model.predict(images/255)
 print("Finished predictions.")
+
+np.savetxt("datasets//predictions//ResNet50_predictions.csv", pred, fmt='%1.18f', delimiter=',')
 
 def round_nearest(x, a):
     return np.round(x / a) * a
@@ -239,6 +244,7 @@ round_pred = round_nearest(pred,0.05)
 ###Write code here to evaluate the classifier
 #The predprob function comes directly from the challenge organizers
 pred_prob = predprob(cellularity, pred)
+print("Prediction probability score: "+str(pred_prob))
 tau_b, p_value = stats.kendalltau(pred[valind], cellularity[valind])
 np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 
@@ -246,20 +252,22 @@ np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
+plt.savefig("datasets//predictions//ResNet50_val_graph.png", dpi=150)
+plt.show()
 
-#Make nice results table
-plain = pd.DataFrame()
-plain['slide'] = image_slide
-plain['image'] = image_region
-plain['prediction_plain'] = pred
-plain['truth'] = cellularity
-
-#Add nuclei results to my table
-nuclei = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\nuclei_results.csv", sep='\s*,\s*')
-nuclei['slide'] = nuclei['slide'].astype(np.int64)
-nuclei['image'] = nuclei['image'].astype(str)
-merge =pd.merge(plain, nuclei[['slide','image','prediction']], on=['slide','image'])
-
-pred_avg = np.mean((np.array(merge['prediction_plain']),np.array(merge['prediction'])), axis=0)
-round_pred_avg = round_nearest(pred_avg,0.05)
-tau_b_avg, p_value = stats.kendalltau(round_pred_avg[valind], cellularity[valind])
+##Make nice results table
+#plain = pd.DataFrame()
+#plain['slide'] = image_slide
+#plain['image'] = image_region
+#plain['prediction_plain'] = pred
+#plain['truth'] = cellularity
+#
+##Add nuclei results to my table
+#nuclei = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\nuclei_results.csv", sep='\s*,\s*')
+#nuclei['slide'] = nuclei['slide'].astype(np.int64)
+#nuclei['image'] = nuclei['image'].astype(str)
+#merge =pd.merge(plain, nuclei[['slide','image','prediction']], on=['slide','image'])
+#
+#pred_avg = np.mean((np.array(merge['prediction_plain']),np.array(merge['prediction'])), axis=0)
+#round_pred_avg = round_nearest(pred_avg,0.05)
+#tau_b_avg, p_value = stats.kendalltau(round_pred_avg[valind], cellularity[valind])

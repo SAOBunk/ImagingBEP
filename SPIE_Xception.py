@@ -1,5 +1,5 @@
 from predprob import predprob
-from keras.applications.vgg19 import VGG19
+from keras.applications.xception import Xception
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D
 import numpy as np
@@ -15,7 +15,7 @@ from keras.callbacks import TensorBoard
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-if(1):
+if(0):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -115,7 +115,7 @@ print("Loaded the dataset.")
 ###########
 
 # Create the base pre-trained model
-base_model = VGG19(weights='imagenet', include_top=False)
+base_model = Xception(weights='imagenet', include_top=False)
 
 # Add a global spatial average pooling layer
 x = base_model.output
@@ -166,12 +166,12 @@ print("Initialized ImageDataGenerators")
 
 
 # checkpoint
-filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\VGG19.hdf5"
+filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Xception.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
 
-if(0):   
+if(1):   
     train_gen = datagen.flow(images[trainind], 
                              np.reshape(cellularity[trainind], (-1,1)), 
                              batch_size=10, 
@@ -202,28 +202,28 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-#if(0):
-#    # I chose to train a lot of the inception blocks, i.e. we will freeze
-#    # the first 41 layers and unfreeze the rest:
-#    for layer in model.layers[:17]:
-#       layer.trainable = False
-#    for layer in model.layers[17:]:
-#       layer.trainable = True
-#    
-#    # we need to recompile the model for these modifications to take effect
-#    # we use adam with a low learning rate
-#    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
-#    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
-#    print("Recompiled model for second training")
-#    
-#    # we train our model again (this time fine-tuning the top 2 inception blocks
-#    # alongside the top Dense layers
-#    print("Starting second training.")
-#    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
-#    print("Completed second training.")
-#    #Load the best weights in the model
-#    model.load_weights(filepath)
-#    print("Loaded new best weights.")
+if(0):
+    # I chose to train a lot of the inception blocks, i.e. we will freeze
+    # the first 41 layers and unfreeze the rest:
+    for layer in model.layers[:99]:
+       layer.trainable = False
+    for layer in model.layers[99:]:
+       layer.trainable = True
+    
+    # we need to recompile the model for these modifications to take effect
+    # we use adam with a low learning rate
+    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
+    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
+    print("Recompiled model for second training")
+    
+    # we train our model again (this time fine-tuning the top 2 inception blocks
+    # alongside the top Dense layers
+    print("Starting second training.")
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    print("Completed second training.")
+    #Load the best weights in the model
+    model.load_weights(filepath)
+    print("Loaded new best weights.")
 ###########
 ### Predict with trained model
 ###########
@@ -235,9 +235,7 @@ pred = model.predict_generator(predict_datagen, steps=predict_steps+1, verbose=1
 #pred = model.predict(images/255)
 print("Finished predictions.")
 
-
-np.savetxt("datasets//predictions//VGG19_predictions.csv", pred, fmt='%1.18f', delimiter=',')
-
+np.savetxt("datasets//predictions//Xception_predictions.csv", pred, fmt='%1.18f', delimiter=',')
 
 def round_nearest(x, a):
     return np.round(x / a) * a
@@ -254,7 +252,7 @@ np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
-plt.savefig("datasets//predictions//VGG19_val_graph.png", dpi=150)
+plt.savefig("datasets//predictions//Xception_val_graph.png", dpi=150)
 plt.show()
 
 ##Make nice results table
