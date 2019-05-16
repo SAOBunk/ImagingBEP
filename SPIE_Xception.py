@@ -15,7 +15,7 @@ from keras.callbacks import TensorBoard
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-if(0):
+if(1):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -164,14 +164,14 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-
+ver = "3"
 # checkpoint
-filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Xception.hdf5"
+filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Xception_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
 
-if(1):   
+if(0):   
     train_gen = datagen.flow(images[trainind], 
                              np.reshape(cellularity[trainind], (-1,1)), 
                              batch_size=10, 
@@ -191,7 +191,7 @@ if(1):
     print("Completeted initial training.")
 
 #Load the best weights in the model
-model.load_weights(filepath)
+#model.load_weights(filepath)
 print("Loaded best weights.")
 # at this point, the top layers are well trained and we can start fine-tuning
 # convolutional layers from inception V3. We will freeze the bottom N layers
@@ -202,12 +202,12 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-if(0):
+if(1):
     # I chose to train a lot of the inception blocks, i.e. we will freeze
     # the first 41 layers and unfreeze the rest:
-    for layer in model.layers[:99]:
+    for layer in model.layers[:66]:
        layer.trainable = False
-    for layer in model.layers[99:]:
+    for layer in model.layers[66:]:
        layer.trainable = True
     
     # we need to recompile the model for these modifications to take effect
@@ -235,7 +235,7 @@ pred = model.predict_generator(predict_datagen, steps=predict_steps+1, verbose=1
 #pred = model.predict(images/255)
 print("Finished predictions.")
 
-np.savetxt("datasets//predictions//Xception_predictions.csv", pred, fmt='%1.18f', delimiter=',')
+np.savetxt("datasets//predictions//Xception_"+ver+"_predictions.csv", pred, fmt='%1.18f', delimiter=',')
 
 def round_nearest(x, a):
     return np.round(x / a) * a
@@ -252,7 +252,7 @@ np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
-plt.savefig("datasets//predictions//Xception_val_graph.png", dpi=150)
+plt.savefig("datasets//predictions//Xception_"+ver+"_val_graph.png", dpi=150)
 plt.show()
 
 ##Make nice results table

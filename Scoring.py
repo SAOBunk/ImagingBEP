@@ -5,10 +5,11 @@ import numpy as np
 import glob
 import matplotlib.pyplot as plt
 import scipy.stats as stats
+from sklearn.metrics import mean_squared_error
 import operator
 import re
 
-if(1):
+if(0):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -21,7 +22,6 @@ os.chdir(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP")
 ############
 
 #Images
-images=[]
 image_slide=[]
 image_region=[]
 for img in sorted(glob.glob(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\train\\*.tif")):
@@ -86,15 +86,27 @@ print("Loaded the dataset.")
 #Predictions
 pred_inceptionv3 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Inceptionv3_predictions.csv", header=None))
 pred_vgg19 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\VGG19_predictions.csv", header=None))
-#pred_xception = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Xception_predictions.csv", header=None))
+pred_xception = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Xception_predictions.csv", header=None))
 
-predictions = [pred_inceptionv3, pred_vgg19]#, pred_xception]
+predictions = [pred_inceptionv3, pred_vgg19, pred_xception]
 names = ["Inceptionv3", "VGG19", "Xception"]
 
 print("loaded prediction data.")
 
 #%% Perform statistical analysis
 for i,pred in enumerate(predictions):
+	name = names[i]
 	pred_prob = predprob(cellularity[testind], pred[testind])
-	print("Prediction probability score for {0}: {1}".format(names[i],pred_prob))
-	tau_b, p_value = stats.kendalltau(pred[testind], cellularity[testind])
+	print("Prediction probability score for {0}: {1}".format(name,pred_prob))
+	tau_b, p_value_tau_b = stats.kendalltau(pred[testind], cellularity[testind])
+	spearman_correlation, p_value_spcor = stats.spearmanr(pred[testind],cellularity[testind])
+	msq = mean_squared_error(cellularity[testind], pred[testind]) #Determine standard deviation as well
+	print("Tau: {0}\nSpearman Correlation: {1}\nMean Squared Error: {2}".format(tau_b,spearman_correlation, msq))
+	
+	#Plot
+	plt.scatter(cellularity[testind], pred[testind])
+	plt.xlabel("Ground truth")
+	plt.ylabel("{0} Model prediction".format(name))
+	plt.savefig("datasets//predictions//"+name+"_test_graph.png", dpi=150)
+	plt.show()
+

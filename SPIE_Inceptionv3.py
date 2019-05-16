@@ -15,7 +15,7 @@ from keras.callbacks import TensorBoard
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-if(0):
+if(1):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -164,30 +164,31 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-
+ver = "3"
 # checkpoint
-filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Inceptionv3.hdf5"
+filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Inceptionv3_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
 
-if(1):   
-    train_gen = datagen.flow(images[trainind], 
-                             np.reshape(cellularity[trainind], (-1,1)), 
-                             batch_size=10, 
-                             shuffle=True)
+if(0):   
+#    train_gen = datagen.flow(images[trainind], 
+#                             np.reshape(cellularity[trainind], (-1,1)), 
+#                             batch_size=10, 
+#                             shuffle=True)
+#    
+#    val_gen = val_datagen.flow(images[valind], 
+#                               np.reshape(cellularity[valind], (-1,1)), 
+#                               batch_size=10, 
+#                               shuffle=False)
     
-    val_gen = val_datagen.flow(images[valind], 
-                               np.reshape(cellularity[valind], (-1,1)), 
-                               batch_size=10, 
-                               shuffle=False)
-    
-    print("Initialized first data generators.")
+#    print("Initialized first data generators.")
 
     
     print("Starting initial training.")
     # train the model on the new data for a few epochs
-    model.fit_generator(train_gen, steps_per_epoch=100, epochs=100, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    #model.fit_generator(train_gen, steps_per_epoch=100, epochs=20, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
     print("Completeted initial training.")
 
 #Load the best weights in the model
@@ -219,7 +220,7 @@ if(0):
     # we train our model again (this time fine-tuning the top 2 inception blocks
     # alongside the top Dense layers
     print("Starting second training.")
-    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
     print("Completed second training.")
     #Load the best weights in the model
     model.load_weights(filepath)
@@ -235,7 +236,7 @@ pred = model.predict_generator(predict_datagen, steps=predict_steps+1, verbose=1
 #pred = model.predict(images/255)
 print("Finished predictions.")
 
-np.savetxt("datasets//predictions//Inceptionv3_predictions.csv", pred, fmt='%1.18f', delimiter=',')
+np.savetxt("datasets//predictions//Inceptionv3_"+ver+"_predictions.csv", pred, fmt='%1.18f', delimiter=',')
 
 
 def round_nearest(x, a):
@@ -253,7 +254,7 @@ np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
-plt.savefig("datasets//predictions//Inceptionv3_val_graph.png", dpi=150)
+plt.savefig("datasets//predictions//Inceptionv3_"+ver+"_val_graph.png", dpi=150)
 plt.show()
 
 #Make nice results table
