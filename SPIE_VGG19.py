@@ -187,7 +187,7 @@ if(1):
     
     print("Starting initial training.")
     # train the model on the new data for a few epochs
-    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
     #model.fit_generator(train_gen, steps_per_epoch=100, epochs=20, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
     print("Completeted initial training.")
 

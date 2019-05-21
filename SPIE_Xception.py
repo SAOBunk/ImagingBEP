@@ -164,7 +164,7 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-ver = "3"
+ver = "2"
 # checkpoint
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Xception_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
@@ -191,7 +191,7 @@ if(0):
     print("Completeted initial training.")
 
 #Load the best weights in the model
-#model.load_weights(filepath)
+model.load_weights(filepath)
 print("Loaded best weights.")
 # at this point, the top layers are well trained and we can start fine-tuning
 # convolutional layers from inception V3. We will freeze the bottom N layers
@@ -202,7 +202,7 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-if(1):
+if(0):
     # I chose to train a lot of the inception blocks, i.e. we will freeze
     # the first 41 layers and unfreeze the rest:
     for layer in model.layers[:66]:

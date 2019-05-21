@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error
 import operator
 import re
 
-if(0):
+if(1):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -82,31 +82,81 @@ print(np.mean(cellularity[testind])) #test mean:0.35, median:0.25
 
 print("Loaded the dataset.")
 
-
-#Predictions
-pred_inceptionv3 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Inceptionv3_predictions.csv", header=None))
-pred_vgg19 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\VGG19_predictions.csv", header=None))
-pred_xception = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Xception_predictions.csv", header=None))
-
-predictions = [pred_inceptionv3, pred_vgg19, pred_xception]
+#%%
 names = ["Inceptionv3", "VGG19", "Xception"]
+df = pd.DataFrame({"Network Index":[1,2,3,4]})
+for i,name in enumerate(names):
+	tauArray = []
+	spearArray = []
+	msqArray = []
+	predprobArray = []
+	for j in range(1,5):
+		pred1 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\"+name+"_"+str(j)+"_predictions.csv", header=None))
+		pred = []
+		for i,val in enumerate(pred1):
+			pred.append(val[0])
+		pred = np.array(pred)
+		
+		pred_prob = predprob(cellularity[testind], pred[testind])
+		print("Prediction probability score for {0}_{2}: {1}".format(name,pred_prob,j))
+		tau_b, p_value_tau_b = stats.kendalltau(pred[testind], cellularity[testind])
+		spearman_correlation, p_value_spcor = stats.spearmanr(pred[testind],cellularity[testind])
+		msq = mean_squared_error(cellularity[testind], pred[testind]) #Determine standard deviation as well
+		print("Tau: {0}\nSpearman Correlation: {1}\nMean Squared Error: {2}".format(tau_b,spearman_correlation, msq))
+		
+		tauArray.append(tau_b)
+		spearArray.append(spearman_correlation)
+		msqArray.append(msq)
+		predprobArray.append(pred_prob)
+		
+		#Plot
+		plt.scatter(cellularity[testind], pred[testind])
+		plt.xlabel("Ground truth")
+		plt.ylabel("{0}_{1} Model prediction".format(name,j))
+		plt.savefig("datasets//predictions//"+name+"_"+str(j)+"_test_graph.png", dpi=150)
+		plt.show()
+		
+		#heatmap
+		H = np.histogram2d(cellularity[testind], pred[testind], bins=20)[0]
+		plt.imshow(H, cmap='hot', origin='lower',extent=(0,1,0,1))
+		plt.show()
+		
+		
+	d = {name+" Kendall's Tau": tauArray, 
+	     name+" Prediction Probability": predprobArray, 
+		 name+" Mean Square Error":msqArray,
+		 name+" Spearman Correlation":spearArray}
+	statdf = pd.DataFrame(data=d)
+	df = df.join(statdf, how='right')
 
-print("loaded prediction data.")
-
-#%% Perform statistical analysis
-for i,pred in enumerate(predictions):
-	name = names[i]
-	pred_prob = predprob(cellularity[testind], pred[testind])
-	print("Prediction probability score for {0}: {1}".format(name,pred_prob))
-	tau_b, p_value_tau_b = stats.kendalltau(pred[testind], cellularity[testind])
-	spearman_correlation, p_value_spcor = stats.spearmanr(pred[testind],cellularity[testind])
-	msq = mean_squared_error(cellularity[testind], pred[testind]) #Determine standard deviation as well
-	print("Tau: {0}\nSpearman Correlation: {1}\nMean Squared Error: {2}".format(tau_b,spearman_correlation, msq))
-	
-	#Plot
-	plt.scatter(cellularity[testind], pred[testind])
-	plt.xlabel("Ground truth")
-	plt.ylabel("{0} Model prediction".format(name))
-	plt.savefig("datasets//predictions//"+name+"_test_graph.png", dpi=150)
-	plt.show()
+df.to_excel(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\metrics_table.xlsx")
+	 
+		
+#for j in range(1,5):
+#	#Predictions
+#	pred_inceptionv3 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Inceptionv3_"+str(j)+"_predictions.csv", header=None))
+#	pred_vgg19 = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\VGG19_"+str(j)+"_predictions.csv", header=None))
+#	pred_xception = np.array(pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\predictions\\Xception_"+str(j)+"_predictions.csv", header=None))
+#	
+#	predictions = [pred_inceptionv3, pred_vgg19, pred_xception]
+#	
+#	
+#	print("loaded prediction data.")
+#	
+#	# Perform statistical analysis
+#	for i,pred in enumerate(predictions):
+#		name = names[i]
+#		pred_prob = predprob(cellularity[testind], pred[testind])
+#		print("Prediction probability score for {0}: {1}".format(name,pred_prob))
+#		tau_b, p_value_tau_b = stats.kendalltau(pred[testind], cellularity[testind])
+#		spearman_correlation, p_value_spcor = stats.spearmanr(pred[testind],cellularity[testind])
+#		msq = mean_squared_error(cellularity[testind], pred[testind]) #Determine standard deviation as well
+#		print("Tau: {0}\nSpearman Correlation: {1}\nMean Squared Error: {2}".format(tau_b,spearman_correlation, msq))
+#		
+#		#Plot
+#		plt.scatter(cellularity[testind], pred[testind])
+#		plt.xlabel("Ground truth")
+#		plt.ylabel("{0} Model prediction".format(name))
+#		plt.savefig("datasets//predictions//"+name+"_test_graph.png", dpi=150)
+#		plt.show()
 
