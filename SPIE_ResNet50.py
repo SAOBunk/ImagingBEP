@@ -1,7 +1,7 @@
 from predprob import predprob
 from keras.applications import ResNet50
 from keras.models import Model
-from keras.layers import Dense, GlobalAveragePooling2D
+from keras.layers import Dense, GlobalAveragePooling2D, BatchNormalization
 import numpy as np
 import glob
 from PIL import Image
@@ -12,6 +12,7 @@ from keras import optimizers
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import ModelCheckpoint
 from keras.callbacks import TensorBoard
+from keras.callbacks import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
@@ -24,6 +25,17 @@ os.chdir(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP")
 
 
 
+
+#For Keras
+#from keras.backend.tensorflow_backend import set_session
+#import tensorflow as tf
+##config = tf.ConfigProto()
+##config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+##config.log_device_placement = True  # to log device placement (on which device the operation ran)
+##sess = tf.Session(config=config)
+#gpu_options = tf.GPUOptions(allow_growth=True)
+#sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+#set_session(sess)  # set this TensorFlow session as the default session for Keras
 
 ############
 ### Import the main dataset
@@ -115,7 +127,7 @@ print("Loaded the dataset.")
 ###########
 
 # Create the base pre-trained model
-base_model = ResNet50(weights='imagenet', include_top=False)
+base_model = ResNet50(weights=None, include_top=False)#, input_shape=(512,512,3))
 
 # Add a global spatial average pooling layer
 x = base_model.output
@@ -126,12 +138,24 @@ x = Dense(1024, activation='relu')(x)
 predictions = Dense(1, activation='sigmoid')(x)
 
 # First: train only the top layers (which were randomly initialized)
-# i.e. freeze all convolutional InceptionV3 layers
-for layer in base_model.layers:
-    layer.trainable = False
+# i.e. freeze all convolutional ResNet50 layers
+#for layer in base_model.layers:
+#    layer.trainable = False
+
+
 
 # This is the model we will train
 model = Model(inputs=base_model.input, outputs=predictions)
+
+#Change the momentum for the good of the people
+for i, layer in enumerate(model.layers):
+	name = str(layer.name)
+	#print(name[0:2])
+	if(name[0:2]=="bn"):
+		config = layer.get_config()
+		config['momentum'] = 0.01 
+		model.layers[i] = BatchNormalization.from_config(config)
+
 
 # I chose to train the top 2 inception blocks, i.e. we will freeze
 # the first 249 layers and unfreeze the rest:
@@ -142,10 +166,22 @@ model = Model(inputs=base_model.input, outputs=predictions)
 #for layer in model.layers[:]:
 #   layer.trainable = True
 
+#Train a small amount of layers so it doesn't run OOM.
+#for layer in model.layers[:3]:
+#	layer.trainable = False
+#for layer in model.layers[3:]:
+#	layer.trainable = True
+
 # Compile the model (should be done *after* setting layers to non-trainable)
 adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
 
+#Check that the momentum manipulation was succesful
+for i, layer in enumerate(model.layers):
+	name = str(layer.name)
+	if(name[0:2]=="bn"):
+		config = layer.get_config()
+		print(i, config)
 print("Compiled model.")
 
 # Build a data augmentor
@@ -164,30 +200,18 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-
+ver = "4"
 # checkpoint
-filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\ResNet50.hdf5"
+filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\ResNet50_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
-callbacks_list = [checkpoint, tensorboard]
+reduce_lr = ReduceLROnPlateau(monitor='val_mean_squared_error', verbose=1, factor=0.2, patience=2, min_lr=0.0001, mode='min')
+callbacks_list = [checkpoint, tensorboard, reduce_lr]
 
-if(0):   
-    train_gen = datagen.flow(images[trainind], 
-                             np.reshape(cellularity[trainind], (-1,1)), 
-                             batch_size=10, 
-                             shuffle=True)
-    
-    val_gen = val_datagen.flow(images[valind], 
-                               np.reshape(cellularity[valind], (-1,1)), 
-                               batch_size=10, 
-                               shuffle=False)
-    
-    print("Initialized first data generators.")
-
-    
+if(1):   
     print("Starting initial training.")
     # train the model on the new data for a few epochs
-    model.fit_generator(train_gen, steps_per_epoch=100, epochs=100, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=5, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=5, shuffle=False), validation_steps=25, callbacks=callbacks_list)
     print("Completeted initial training.")
 
 #Load the best weights in the model
@@ -202,28 +226,28 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-if(0):
-    # I chose to train a lot of the inception blocks, i.e. we will freeze
-    # the first 41 layers and unfreeze the rest:
-    for layer in model.layers[:99]:
-       layer.trainable = False
-    for layer in model.layers[99:]:
-       layer.trainable = True
-    
-    # we need to recompile the model for these modifications to take effect
-    # we use adam with a low learning rate
-    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
-    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
-    print("Recompiled model for second training")
-    
-    # we train our model again (this time fine-tuning the top 2 inception blocks
-    # alongside the top Dense layers
-    print("Starting second training.")
-    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
-    print("Completed second training.")
-    #Load the best weights in the model
-    model.load_weights(filepath)
-    print("Loaded new best weights.")
+#if(1):
+#    # I chose to train a lot of the inception blocks, i.e. we will freeze
+#    # the first 41 layers and unfreeze the rest:
+#    for layer in model.layers[:41]:
+#       layer.trainable = False
+#    for layer in model.layers[41:]:
+#       layer.trainable = True
+#    
+#    # we need to recompile the model for these modifications to take effect
+#    # we use adam with a low learning rate
+#    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
+#    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
+#    print("Recompiled model for second training")
+#    
+#    # we train our model again (this time fine-tuning the top 2 inception blocks
+#    # alongside the top Dense layers
+#    print("Starting second training.")
+#    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+#    print("Completed second training.")
+#    #Load the best weights in the model
+#    model.load_weights(filepath)
+#    print("Loaded new best weights.")
 ###########
 ### Predict with trained model
 ###########
@@ -235,7 +259,8 @@ pred = model.predict_generator(predict_datagen, steps=predict_steps+1, verbose=1
 #pred = model.predict(images/255)
 print("Finished predictions.")
 
-np.savetxt("datasets//predictions//ResNet50_predictions.csv", pred, fmt='%1.18f', delimiter=',')
+np.savetxt("datasets//predictions//ResNet50_"+ver+"_predictions.csv", pred, fmt='%1.18f', delimiter=',')
+
 
 def round_nearest(x, a):
     return np.round(x / a) * a
@@ -252,16 +277,16 @@ np.savetxt("SPIE_truth_val.csv", cellularity, fmt='%1.18f', delimiter=',')
 plt.scatter(cellularity[valind], pred[valind])
 plt.xlabel("Ground truth")
 plt.ylabel("Model prediction")
-plt.savefig("datasets//predictions//ResNet50_val_graph.png", dpi=150)
+plt.savefig("datasets//predictions//ResNet50_"+ver+"_val_graph.png", dpi=150)
 plt.show()
 
-##Make nice results table
-#plain = pd.DataFrame()
-#plain['slide'] = image_slide
-#plain['image'] = image_region
-#plain['prediction_plain'] = pred
-#plain['truth'] = cellularity
-#
+#Make nice results table
+plain = pd.DataFrame()
+plain['slide'] = image_slide
+plain['image'] = image_region
+plain['prediction_plain'] = pred
+plain['truth'] = cellularity
+
 ##Add nuclei results to my table
 #nuclei = pd.read_csv(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\nuclei_results.csv", sep='\s*,\s*')
 #nuclei['slide'] = nuclei['slide'].astype(np.int64)

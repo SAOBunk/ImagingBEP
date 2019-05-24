@@ -83,7 +83,7 @@ print(np.mean(cellularity[testind])) #test mean:0.35, median:0.25
 print("Loaded the dataset.")
 
 #%%
-names = ["Inceptionv3", "VGG19", "Xception"]
+names = ["Inceptionv3", "VGG19", "Xception","ResNet50"]
 df = pd.DataFrame({"Network Index":[1,2,3,4]})
 for i,name in enumerate(names):
 	tauArray = []

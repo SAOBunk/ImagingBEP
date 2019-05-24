@@ -164,7 +164,7 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-ver = "4"
+ver = "1"
 # checkpoint
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Inceptionv3_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
@@ -203,7 +203,7 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-if(0):
+if(1):
     # I chose to train a lot of the inception blocks, i.e. we will freeze
     # the first 41 layers and unfreeze the rest:
     for layer in model.layers[:41]:
@@ -220,7 +220,7 @@ if(0):
     # we train our model again (this time fine-tuning the top 2 inception blocks
     # alongside the top Dense layers
     print("Starting second training.")
-    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
     print("Completed second training.")
     #Load the best weights in the model
     model.load_weights(filepath)
