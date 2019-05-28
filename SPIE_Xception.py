@@ -15,7 +15,7 @@ from keras.callbacks import TensorBoard
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-if(1):
+if(0):
     pathPrefix = "F:\\Studie\\"
 else:
     pathPrefix = "C:\\Users\\s155868\\"
@@ -164,7 +164,7 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-ver = "2"
+ver = "5"
 # checkpoint
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\Xception_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
