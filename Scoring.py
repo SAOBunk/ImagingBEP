@@ -111,6 +111,7 @@ for i,name in enumerate(names):
 		
 		#Plot
 		plt.scatter(cellularity[testind], pred[testind])
+		plt.plot([0,1],[0,1])
 		plt.xlabel("Ground truth")
 		plt.ylabel("{0}_{1} Model prediction".format(name,j))
 		plt.savefig("datasets//predictions//"+name+"_"+str(j)+"_test_graph.png", dpi=150)

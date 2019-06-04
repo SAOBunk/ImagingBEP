@@ -16,12 +16,15 @@ from keras.callbacks import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-if(0):
-    pathPrefix = "F:\\Studie\\"
-else:
-    pathPrefix = "C:\\Users\\s155868\\"
 import os
-os.chdir(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP")
+try:
+	pathPrefix = "C:\\Users\\s155868\\"
+	os.chdir(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP")
+except:
+	pathPrefix = "F:\\Studie\\"
+	os.chdir(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP")
+
+
 
 
 
@@ -196,6 +199,7 @@ datagen =  ImageDataGenerator(
         vertical_flip=True,
         fill_mode='reflect',
         channel_shift_range=15) 
+#datagen = ImageDataGenerator(rescale=1./255)
 val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
@@ -205,14 +209,15 @@ ver = "4"
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\ResNet50_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
-reduce_lr = ReduceLROnPlateau(monitor='val_mean_squared_error', verbose=1, factor=0.2, patience=2, min_lr=0.00001, mode='min')
+reduce_lr = ReduceLROnPlateau(monitor='val_mean_squared_error', verbose=1, factor=0.5, patience=2, min_lr=0.0001, mode='min')
 callbacks_list = [checkpoint, tensorboard, reduce_lr]
 
 if(1):   
-    print("Starting initial training.")
-    # train the model on the new data for a few epochs
-    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=5, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=5, shuffle=False), validation_steps=25, callbacks=callbacks_list)
-    print("Completeted initial training.")
+	model.load_weights(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5")
+	print("Starting initial training.")
+	# train the model on the new data for a few epochs
+	model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=5, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=5, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+	print("Completeted initial training.")
 
 #Load the best weights in the model
 model.load_weights(filepath)
