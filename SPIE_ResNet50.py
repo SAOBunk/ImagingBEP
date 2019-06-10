@@ -130,7 +130,7 @@ print("Loaded the dataset.")
 ###########
 
 # Create the base pre-trained model
-base_model = ResNet50(weights=None, include_top=False)#, input_shape=(512,512,3))
+base_model = ResNet50(weights='imagenet', include_top=False)#, input_shape=(512,512,3))
 
 # Add a global spatial average pooling layer
 x = base_model.output
@@ -150,14 +150,14 @@ predictions = Dense(1, activation='sigmoid')(x)
 # This is the model we will train
 model = Model(inputs=base_model.input, outputs=predictions)
 
-#Change the momentum for the good of the people
-for i, layer in enumerate(model.layers):
-	name = str(layer.name)
-	#print(name[0:2])
-	if(name[0:2]=="bn"):
-		config = layer.get_config()
-		config['momentum'] = 0.01 
-		model.layers[i] = BatchNormalization.from_config(config)
+#Change the momentum of the batchnorm layers
+#for i, layer in enumerate(model.layers):
+#	name = str(layer.name)
+#	#print(name[0:2])
+#	if(name[0:2]=="bn"):
+#		config = layer.get_config()
+#		config['momentum'] = 0.01 
+#		model.layers[i] = BatchNormalization.from_config(config)
 
 
 # I chose to train the top 2 inception blocks, i.e. we will freeze
@@ -176,7 +176,7 @@ for i, layer in enumerate(model.layers):
 #	layer.trainable = True
 
 # Compile the model (should be done *after* setting layers to non-trainable)
-adam = optimizers.Adam(lr=1, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
+adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
 model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
 
 #Check that the momentum manipulation was succesful
@@ -209,11 +209,11 @@ ver = "4"
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\ResNet50_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
-reduce_lr = ReduceLROnPlateau(monitor='val_mean_squared_error', verbose=1, factor=0.5, patience=2, min_lr=0.0001, mode='min')
-callbacks_list = [checkpoint, tensorboard, reduce_lr]
+#reduce_lr = ReduceLROnPlateau(monitor='val_mean_squared_error', verbose=1, factor=0.5, patience=2, min_lr=0.0001, mode='min')
+callbacks_list = [checkpoint, tensorboard]#, reduce_lr]
 
 if(1):   
-	model.load_weights(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5")
+	#model.load_weights(pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5")
 	print("Starting initial training.")
 	# train the model on the new data for a few epochs
 	model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=5, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=5, shuffle=False), validation_steps=25, callbacks=callbacks_list)
