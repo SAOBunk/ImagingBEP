@@ -164,14 +164,14 @@ val_datagen = ImageDataGenerator(rescale=1./255)
 
 print("Initialized ImageDataGenerators")
 
-ver = "4"
+ver = "test"
 # checkpoint
 filepath=pathPrefix+"OneDrive - TU Eindhoven\\Vakken\\2018-2019\\Kwart 4\\BEP\\datasets\\models\\VGG19_"+ver+".hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_mean_squared_error', verbose=1, save_best_only=True, mode='min')
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False)
 callbacks_list = [checkpoint, tensorboard]
 
-if(1):   
+if(0):   
 #    train_gen = datagen.flow(images[trainind], 
 #                             np.reshape(cellularity[trainind], (-1,1)), 
 #                             batch_size=10, 
@@ -187,7 +187,7 @@ if(1):
     
     print("Starting initial training.")
     # train the model on the new data for a few epochs
-    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
     #model.fit_generator(train_gen, steps_per_epoch=100, epochs=20, validation_data=val_gen, validation_steps=22, callbacks=callbacks_list)
     print("Completeted initial training.")
 
@@ -203,28 +203,28 @@ print("Loaded best weights.")
 #for i, layer in enumerate(base_model.layers):
 #   print(i, layer.name)
 
-#if(0):
-#    # I chose to train a lot of the inception blocks, i.e. we will freeze
-#    # the first 41 layers and unfreeze the rest:
-#    for layer in model.layers[:17]:
-#       layer.trainable = False
-#    for layer in model.layers[17:]:
-#       layer.trainable = True
-#    
-#    # we need to recompile the model for these modifications to take effect
-#    # we use adam with a low learning rate
-#    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
-#    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
-#    print("Recompiled model for second training")
-#    
-#    # we train our model again (this time fine-tuning the top 2 inception blocks
-#    # alongside the top Dense layers
-#    print("Starting second training.")
-#    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=100, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
-#    print("Completed second training.")
-#    #Load the best weights in the model
-#    model.load_weights(filepath)
-#    print("Loaded new best weights.")
+if(1):
+    # I chose to train a lot of the inception blocks, i.e. we will freeze
+    # the first 41 layers and unfreeze the rest:
+    for layer in model.layers[:17]:
+       layer.trainable = False
+    for layer in model.layers[17:]:
+       layer.trainable = True
+    
+    # we need to recompile the model for these modifications to take effect
+    # we use adam with a low learning rate
+    adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0)
+    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['mean_squared_error'])
+    print("Recompiled model for second training")
+    
+    # we train our model again (this time fine-tuning the top 2 inception blocks
+    # alongside the top Dense layers
+    print("Starting second training.")
+    model.fit_generator(datagen.flow(images[trainind], np.reshape(cellularity[trainind], (-1,1)), batch_size=10, shuffle=True), steps_per_epoch=100, epochs=20, validation_data=val_datagen.flow(images[valind], np.reshape(cellularity[valind], (-1,1)), batch_size=10, shuffle=False), validation_steps=25, callbacks=callbacks_list)
+    print("Completed second training.")
+    #Load the best weights in the model
+    model.load_weights(filepath)
+    print("Loaded new best weights.")
 ###########
 ### Predict with trained model
 ###########
